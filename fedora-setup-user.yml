@@ -1,10 +1,15 @@
 ---
-- name: "Setup local Fedora 35 system (user)"
+- name: "Setup local Fedora system (user)"
   hosts: localhost
   connection: local
 
-  tasks:
+  vars:
+    ara_playbook_name: "Setup local Fedora system (user)"
+    ara_playbook_labels:
+      - deploy
+      - prod
 
+  tasks:
     - name: "Set Current User Variable"
       run_once: True
       set_fact:
