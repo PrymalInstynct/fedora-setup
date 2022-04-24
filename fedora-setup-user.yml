@@ -1,0 +1,53 @@
+---
+- name: "Setup local Fedora 35 system (user)"
+  hosts: localhost
+  connection: local
+
+  tasks:
+
+    - name: "Set Current User Variable"
+      run_once: True
+      set_fact:
+        ansible_local_user: "{{ lookup('pipe', 'id -un') | d(lookup('pipe', 'whoami'), True) | d(lookup('env', 'USER'), True) |  d(lookup('env', 'user'), True) |  d(lookup('env', 'LOGNAME'), True) }}"
+      failed_when: ansible_local_user == ''
+    
+    - name: "Add the flathub repository remote to the user installation"
+      community.general.flatpak_remote:
+        name: flathub
+        state: present
+        flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+        method: user
+
+    - name: "Install flatpaks (flathub)"
+      community.general.flatpak:
+        remote: flathub
+        method: user
+        name:
+          - net.cozic.joplin_desktop
+          - org.gnome.Extensions
+          - com.github.tchx84.Flatseal
+          - org.inkscape.Inkscape
+          - org.gimp.GIMP
+          - com.github.rafostar.Clapper
+          - com.discordapp.Discord
+          - org.audacityteam.Audacity
+          - io.github.seadve.Kooha
+          - com.spotify.Client
+          - de.haeckerfelix.Shortwave
+          - org.gnome.gitlab.somas.Apostrophe
+          - com.github.johnfactotum.Foliate
+          - md.obsidian.Obsidian
+          - org.chromium.Chromium
+          - com.mojang.Minecraft
+          - org.gnome.Evolution
+          - com.github.junrrein.PDFSlicer
+          - org.raspberrypi.rpi-imager
+          - com.sublimetext.three
+          - com.ktechpit.wonderwall
+          - org.vim.Vim
+
+    - name: "Set default shell to fish"
+      ansible.builtin.user:
+        name: "{{ ansible_local_user }}"
+        shell: /bin/bash
+
