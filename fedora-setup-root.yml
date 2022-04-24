@@ -56,6 +56,8 @@
           - code
           - git
           - bash-completion
+          - buildah
+          - skopeo
       update_cache: yes
       state: present
       
