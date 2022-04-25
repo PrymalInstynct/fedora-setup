@@ -1,9 +1,12 @@
 #!/bin/bash
+
+# Validate script is being run by sudo/root
 if [ "$EUID" -ne 0 ]
   then echo "Please run as root"
   exit 1
 fi
 
+# Install Dependent Applications
 dnf -y install git \
     ansible-core \
     ansible-collection-ansible-netcommon \
@@ -18,40 +21,48 @@ dnf -y install git \
     vim-ansible \
     vim-syntastic-ansible \
     ara \
-    podman
+    podman \
+    httpd-tools
 
-podman volume create ara
+# Setup Password file for ARA Proxy Auth
+# echo -e "\nSet Password for ARA admin\n"
+# htpasswd -c -m ./.htpasswd admin
 
-podman run --name ara --detach --tty \
-  --volume ara:/opt/ara:z -p 8000:8000 \
+# Create ARA Pod
+# podman volume create ara_server
+# podman volume create ara_proxy
+# podman pod create --name ara_pod -p 8000:80
+# podman run --name ara_server --detach --tty --pod ara_pod \
+#   --volume ara_server:/opt/ara:z \
+#   --env "ARA_EXTERNAL_AUTH=true" \
+#   docker.io/recordsansible/ara-api:latest
+# podman run --name ara_proxy --detach --tty --pod ara_pod \
+#   --volume ara_proxy:/etc/nginx:z \
+#   docker.io/library/nginx:latest
+# podman cp ara.conf ara_proxy:/etc/nginx/conf.d/ara.conf
+# podman cp .htpasswd ara_proxy:/etc/nginx/.htpasswd
+# podman generate systemd --new --name ara_pod --files --restart-policy=always
+# mv *.service /etc/systemd/system/
+# systemctl daemon-reload
+# systemctl enable --now pod-ara_pod.service
+
+# Create ARA Container
+podman volume create ara_server
+podman run --name ara_server --detach --tty \
+  --volume ara_server:/opt/ara:z -p 8000:8000 \
+  --env "ARA_TIME_ZONE=America/Denver" \
   docker.io/recordsansible/ara-api:latest
 
-podman generate systemd --new --name ara --restart-policy=always > /etc/systemd/system/container-ara.service
-
-systemctl daemon-reload
-
-systemctl enable --now container-ara.service
-
-echo "# Configure Ansible to use the ARA callback plugin
-ANSIBLE_CALLBACK_PLUGINS="$(python3 -m ara.setup.callback_plugins)"
-
-# Set up the ARA callback to know where the API server is located
-ARA_API_CLIENT="http"
-ARA_API_SERVER="http://127.0.0.1:8000"" >> /etc/environment
-
+# Configure Ansible to utilize ARA Plugins
 ansible-config init --disabled -t all > /etc/ansible/ansible.cfg
-
 ARA_CALLBACK="$(python3 -m ara.setup.callback_plugins)"
 ARA_ACTION="$(python3 -m ara.setup.action_plugins)"
 ARA_LOOKUP="$(python3 -m ara.setup.lookup_plugins)"
-
 sed -i -E "s|;callback_plugins(.*)|callback_plugins\1:$ARA_CALLBACK|g" /etc/ansible/ansible.cfg
 sed -i -E "s|;action_plugins(.*)|action_plugins\1:$ARA_ACTION|g" /etc/ansible/ansible.cfg
 sed -i -E "s|;lookup_plugins(.*)|lookup_plugins\1:$ARA_LOOKUP|g" /etc/ansible/ansible.cfg
-
 sed -i -E "s|;callbacks_enabled.*|callbacks_enabled=profile_tasks, ara_default|g" /etc/ansible/ansible.cfg
 sed -i -E "s|;bin_ansible_callbacks=False|bin_ansible_callbacks=True|g" /etc/ansible/ansible.cfg
-
 echo "
 [ara]
 api_client=http
