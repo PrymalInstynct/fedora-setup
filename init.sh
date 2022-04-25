@@ -75,9 +75,6 @@ GITLEAKS_VERSION=$(curl -s https://api.github.com/repos/zricethezav/gitleaks/rel
 wget -q https://github.com/zricethezav/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz
 tar xzf gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz -C /usr/bin/
 rm -rf gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz 
-# Install prettier
-echo "[+] Install/upgrade prettier"
-npm install --save-dev --save-exact prettier
 
 # Setup Password file for ARA Proxy Auth
 # echo -e "\nSet Password for ARA admin\n"
