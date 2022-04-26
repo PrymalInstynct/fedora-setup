@@ -51,7 +51,7 @@
           - com.ktechpit.wonderwall
           - org.vim.Vim
 
-    - name: "Set default shell to fish"
+    - name: "Set default shell to bash"
       ansible.builtin.user:
         name: "{{ ansible_local_user }}"
         shell: /bin/bash
