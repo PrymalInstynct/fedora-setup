@@ -6,9 +6,19 @@ if [ "$EUID" -ne 0 ]
   exit 1
 fi
 
+# Update with DNF
+echo "[+] Update OS via DNF"
+dnf -y update
+
+# Install DNF Groups
+echo "[+] Install/upgrade DNF Groups"
+dnf -y group install "Window Managers"
+dnf -y group install "Sound and Video"
+
 # Install Dependent Applications with DNF
 echo "[+] Install/upgrade DNF dependencies"
 dnf -y install git \
+    vim
     ansible-core \
     ansible-collection-ansible-netcommon \
     ansible-collection-ansible-posix \
@@ -30,7 +40,50 @@ dnf -y install git \
     jq \
     dnf-plugins-core \
     golang \
-    npm
+    sddm
+
+# Configure Desktop
+echo "[+] Configure Desktop Environment"
+systemctl enable sddm
+systemctl set-default graphical.target
+mkdir ~/.config
+pushd ~/
+cp ~/Projects/fedora-setup/bg.jpg ~/.config
+cp -r ~/Projects/fedora-setup/dotconfig/* ~/.config
+chown -R zimmermanc:zimmermanc .
+echo "[+] Install/upgrade Desktop Packages"
+dnf -y install bspwm \
+    dconf-editor \
+    kitty \
+    picom \
+    polybar \
+    rofi \
+    sxhkd \
+    thunar \
+    nitrogen \
+    ocs-url \
+    fontawesome-fonts \
+    fontawesome-fonts-web \
+    firefox \
+    arandr \
+    unzip
+
+cp ~/Projects/fedora-setup/.xinitrc ~/
+cp ~/Projects/fedora-setup/.Xnord ~/
+cp ~/Projects/fedora-setup/.Xresources ~/
+cp ~/Projects/fedora-setup/.bashrc ~/
+cp -r ~/Projects/fedora-setup/.bashrc.d/ ~/
+cp ~/Projects/fedora-setup/.bash_profile ~/
+pushd ~/Projects/fedora-setup/rpm-packages/
+dnf install ocs-url
+pushd ~/
+wget -O FiraCode.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/FiraCode.zip
+wget -O Meslo.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/Meslo.zip
+mkdir .fonts
+unzip FiraCode.zip -d .fonts/
+unzip Meslo.zip -d .fonts/
+chown -R zimmermanc:zimmermanc ~/
+
 # Install Terraform
 echo "[+] Install/upgrade Terraform"
 dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
@@ -76,60 +129,38 @@ wget -q https://github.com/zricethezav/gitleaks/releases/download/v${GITLEAKS_VE
 tar xzf gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz -C /usr/bin/
 rm -rf gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz 
 
-# Setup Password file for ARA Proxy Auth
-# echo -e "\nSet Password for ARA admin\n"
-# htpasswd -c -m ./.htpasswd admin
-
-# Create ARA Pod
+# # Create ARA Container
+# echo "[+] Install/upgrade ARA Container"
 # podman volume create ara_server
-# podman volume create ara_proxy
-# podman pod create --name ara_pod -p 8000:80
-# podman run --name ara_server --detach --tty --pod ara_pod \
-#   --volume ara_server:/opt/ara:z \
-#   --env "ARA_EXTERNAL_AUTH=true" \
+# podman run --name ara_server --detach --tty \
+#   --volume ara_server:/opt/ara:z -p 8000:8000 \
+#   --env "ARA_TIME_ZONE=America/Denver" \
 #   docker.io/recordsansible/ara-api:latest
-# podman run --name ara_proxy --detach --tty --pod ara_pod \
-#   --volume ara_proxy:/etc/nginx:z \
-#   docker.io/library/nginx:latest
-# podman cp ara.conf ara_proxy:/etc/nginx/conf.d/ara.conf
-# podman cp .htpasswd ara_proxy:/etc/nginx/.htpasswd
-# podman generate systemd --new --name ara_pod --files --restart-policy=always
-# mv *.service /etc/systemd/system/
+# podman generate systemd --new --name ara_server --restart-policy=always > /etc/systemd/system/container-ara_server.service
 # systemctl daemon-reload
-# systemctl enable --now pod-ara_pod.service
+# systemctl enable --now container-ara_server.service
 
-# Create ARA Container
-echo "[+] Install/upgrade ARA Container"
-podman volume create ara_server
-podman run --name ara_server --detach --tty \
-  --volume ara_server:/opt/ara:z -p 8000:8000 \
-  --env "ARA_TIME_ZONE=America/Denver" \
-  docker.io/recordsansible/ara-api:latest
-podman generate systemd --new --name ara_server --restart-policy=always > /etc/systemd/system/container-ara_server.service
-systemctl daemon-reload
-systemctl enable --now container-ara_server.service
-
-# Configure Ansible to utilize ARA Plugins
-echo "[+] Configure ARA Plugin within ansible.cfg"
-ansible-config init --disabled -t all > /etc/ansible/ansible.cfg
-ARA_CALLBACK="$(python3 -m ara.setup.callback_plugins)"
-ARA_ACTION="$(python3 -m ara.setup.action_plugins)"
-ARA_LOOKUP="$(python3 -m ara.setup.lookup_plugins)"
-sed -i -E "s|;callback_plugins(.*)|callback_plugins\1:$ARA_CALLBACK|g" /etc/ansible/ansible.cfg
-sed -i -E "s|;action_plugins(.*)|action_plugins\1:$ARA_ACTION|g" /etc/ansible/ansible.cfg
-sed -i -E "s|;lookup_plugins(.*)|lookup_plugins\1:$ARA_LOOKUP|g" /etc/ansible/ansible.cfg
-sed -i -E "s|;callbacks_enabled.*|callbacks_enabled=profile_tasks, ara_default|g" /etc/ansible/ansible.cfg
-sed -i -E "s|;bin_ansible_callbacks=False|bin_ansible_callbacks=True|g" /etc/ansible/ansible.cfg
-echo "
-[ara]
-api_client=http
-api_server=http://127.0.0.1:8000
-api_timeout=15
-callback_threads=0
-argument_labels=check,tags,subset
-default_labels=prod,deploy
-ignored_arguments=extra_vars,vault_password_files
-localhost_as_hostname=true
-localhost_as_hostname_format=fqdn" >> /etc/ansible/ansible.cfg
+# # Configure Ansible to utilize ARA Plugins
+# echo "[+] Configure ARA Plugin within ansible.cfg"
+# ansible-config init --disabled -t all > /etc/ansible/ansible.cfg
+# ARA_CALLBACK="$(python3 -m ara.setup.callback_plugins)"
+# ARA_ACTION="$(python3 -m ara.setup.action_plugins)"
+# ARA_LOOKUP="$(python3 -m ara.setup.lookup_plugins)"
+# sed -i -E "s|;callback_plugins(.*)|callback_plugins\1:$ARA_CALLBACK|g" /etc/ansible/ansible.cfg
+# sed -i -E "s|;action_plugins(.*)|action_plugins\1:$ARA_ACTION|g" /etc/ansible/ansible.cfg
+# sed -i -E "s|;lookup_plugins(.*)|lookup_plugins\1:$ARA_LOOKUP|g" /etc/ansible/ansible.cfg
+# sed -i -E "s|;callbacks_enabled.*|callbacks_enabled=profile_tasks, ara_default|g" /etc/ansible/ansible.cfg
+# sed -i -E "s|;bin_ansible_callbacks=False|bin_ansible_callbacks=True|g" /etc/ansible/ansible.cfg
+# echo "
+# [ara]
+# api_client=http
+# api_server=http://127.0.0.1:8000
+# api_timeout=15
+# callback_threads=0
+# argument_labels=check,tags,subset
+# default_labels=prod,deploy
+# ignored_arguments=extra_vars,vault_password_files
+# localhost_as_hostname=true
+# localhost_as_hostname_format=fqdn" >> /etc/ansible/ansible.cfg
 
 exit 0
