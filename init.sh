@@ -18,7 +18,7 @@ dnf -y group install "Sound and Video"
 # Install Dependent Applications with DNF
 echo "[+] Install/upgrade DNF dependencies"
 dnf -y install git \
-    vim
+    vim \
     ansible-core \
     ansible-collection-ansible-netcommon \
     ansible-collection-ansible-posix \
@@ -40,8 +40,9 @@ dnf -y install git \
     jq \
     dnf-plugins-core \
     golang \
-    sddm
-
+    sddm \
+    unzip \
+    wget
 # Configure Desktop
 echo "[+] Configure Desktop Environment"
 systemctl enable sddm
@@ -50,7 +51,7 @@ mkdir ~/.config
 pushd ~/
 cp ~/Projects/fedora-setup/bg.jpg ~/.config
 cp -r ~/Projects/fedora-setup/dotconfig/* ~/.config
-chown -R zimmermanc:zimmermanc .
+cp -r ~/Projects/fedora-setup/dotconfig/* ~/.config
 echo "[+] Install/upgrade Desktop Packages"
 dnf -y install bspwm \
     dconf-editor \
@@ -61,13 +62,10 @@ dnf -y install bspwm \
     sxhkd \
     thunar \
     nitrogen \
-    ocs-url \
     fontawesome-fonts \
     fontawesome-fonts-web \
     firefox \
-    arandr \
-    unzip
-
+    autorandr
 cp ~/Projects/fedora-setup/.xinitrc ~/
 cp ~/Projects/fedora-setup/.Xnord ~/
 cp ~/Projects/fedora-setup/.Xresources ~/
@@ -75,7 +73,7 @@ cp ~/Projects/fedora-setup/.bashrc ~/
 cp -r ~/Projects/fedora-setup/.bashrc.d/ ~/
 cp ~/Projects/fedora-setup/.bash_profile ~/
 pushd ~/Projects/fedora-setup/rpm-packages/
-dnf install ocs-url
+dnf -y install ocs-url-3.1.0-1.fc20.x86_64.rpm 
 pushd ~/
 wget -O FiraCode.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/FiraCode.zip
 wget -O Meslo.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/Meslo.zip
